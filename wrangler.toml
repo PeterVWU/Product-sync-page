@@ -1,0 +1,18 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "product-sync-page"
+pages_build_output_dir = "./dist"
+compatibility_date = "2024-11-06"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+SHOPIFY_STORE_URL = "MistHub.myshopify.com"
+# MAGENTO_BASE_URL = "staging.vapewholesaleusa.com"
+MAGENTO_BASE_URL = "vapewholesaleusa.com"
+
+# These should be set as secrets, not in the config file
+# Run these commands to set them:
+# wrangler secret put SHOPIFY_ACCESS_TOKEN
+# wrangler secret put MAGENTO_ACCESS_TOKEN
+
+[observability]
+enabled = true
