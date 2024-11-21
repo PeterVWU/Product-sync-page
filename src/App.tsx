@@ -204,7 +204,6 @@ function App() {
 
   const handleUpdateVariantMapping = (index: number, mappings: AttributeMappingType) => {
     setVariantMappings(prevMappings => {
-      // Create a new array to ensure React detects the change
       const newMappings = [...prevMappings];
       // Update the specific variant's mappings
       newMappings[index] = {
