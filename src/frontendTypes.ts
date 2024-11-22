@@ -28,6 +28,8 @@ export interface ShopifyVariant {
     selectedOptions: ShopifyVariantOption[];
     updatedAt: string;
     image: ShopifyImage | null;
+    inventoryQuantity: number;
+    inventoryCost: number;
 }
 
 export interface ShopifyImage {

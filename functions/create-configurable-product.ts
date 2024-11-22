@@ -12,6 +12,9 @@ interface ProductAttributes {
     manufacturer?: string;
     brand?: string;
     category_ids?: string[];
+    meta_title?: string;
+    meta_keyword?: string;
+    meta_description?: string;
 }
 
 interface CreateConfigurableRequest {
@@ -339,6 +342,28 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             customAttributes.push({
                 attribute_code: "category_ids",
                 value: productAttributes.category_ids
+            });
+        }
+
+        // Add SEO attributes
+        if (productAttributes.meta_title) {
+            customAttributes.push({
+                attribute_code: "meta_title",
+                value: productAttributes.meta_title
+            });
+        }
+
+        if (productAttributes.meta_keyword) {
+            customAttributes.push({
+                attribute_code: "meta_keyword",
+                value: productAttributes.meta_keyword
+            });
+        }
+
+        if (productAttributes.meta_description) {
+            customAttributes.push({
+                attribute_code: "meta_description",
+                value: productAttributes.meta_description
             });
         }
         const configurableProduct = {

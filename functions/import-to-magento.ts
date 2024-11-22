@@ -258,6 +258,12 @@ async function transformToMagentoProduct(
             });
         }
     });
+    if (typeof variant.inventoryCost === 'number' && variant.inventoryCost > 0) {
+        customAttributes.push({
+            attribute_code: 'cost',
+            value: variant.inventoryCost.toString()
+        });
+    }
 
     // Process variant image
     let mediaGalleryEntries: any[] = [];
@@ -341,8 +347,8 @@ async function transformToMagentoProduct(
         extension_attributes: {
             stock_item: {
                 manage_stock: true,
-                is_in_stock: true,
-                qty: 1
+                is_in_stock: variant.inventoryQuantity > 0,
+                qty: variant.inventoryQuantity
             }
         }
     };

@@ -260,7 +260,10 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
                 category_ids: {
                     ...newProductAttributes.category_ids,
                     value: product.productType // Ensure original value is kept
-                }
+                },
+                meta_title: { ...newProductAttributes.meta_title },
+                meta_keyword: { ...newProductAttributes.meta_keyword },
+                meta_description: { ...newProductAttributes.meta_description }
             };
             onUpdateMapping(i, updatedMapping);
         }
@@ -289,6 +292,21 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
                 value: product.productType,
                 mappedTo: 'category_ids',
                 mappedValue: findBestMatchingCategory(product.productType, categories)
+            },
+            meta_title: {
+                value: product.title.toUpperCase() + " - WHOLESALE USA",
+                mappedTo: 'meta_title',
+                mappedValue: product.title.toUpperCase() + " - WHOLESALE USA"
+            },
+            meta_keyword: {
+                value: '',
+                mappedTo: 'meta_keyword',
+                mappedValue: ''
+            },
+            meta_description: {
+                value: product.description,
+                mappedTo: 'meta_description',
+                mappedValue: product.description.replace(/<[^>]*>/g, '').slice(0, 255) // Strip HTML and limit to 255 chars
             }
         };
 
@@ -518,7 +536,6 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
                                 <div className="flex items-center">
                                     <span className="font-medium text-sm w-48">Description:</span>
                                 </div>
-                                <div className="text-sm text-gray-600 mb-2">{product.description}</div>
                                 <SearchableSelect
                                     options={attributes.map(attr => ({
                                         label: attr.default_frontend_label,
@@ -549,6 +566,59 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
                                 />
                             </div>
                         </div>
+                        <div className="mt-8">
+                            <h4 className="text-md font-medium mb-4">SEO Attributes</h4>
+                            <div className="space-y-4">
+                                {/* Meta Title */}
+                                <div className="flex flex-col space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-sm">Meta Title:</span>
+                                        <span className="text-xs text-gray-500">
+                                            {productAttributes.meta_title.mappedValue.length}/255 characters
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={productAttributes.meta_title.mappedValue as string}
+                                        onChange={(e) => handleProductValueChange('meta_title', e.target.value)}
+                                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                                        maxLength={255}
+                                    />
+                                </div>
+
+                                {/* Meta Keywords */}
+                                <div className="flex flex-col space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-sm">Meta Keywords:</span>
+                                        <span className="text-xs text-gray-500">Separate with commas</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={productAttributes.meta_keyword.mappedValue as string}
+                                        onChange={(e) => handleProductValueChange('meta_keyword', e.target.value)}
+                                        placeholder="keyword1, keyword2, keyword3"
+                                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+
+                                {/* Meta Description */}
+                                <div className="flex flex-col space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-sm">Meta Description:</span>
+                                        <span className="text-xs text-gray-500">
+                                            {(productAttributes.meta_description.mappedValue as string).length}/255 characters
+                                        </span>
+                                    </div>
+                                    <textarea
+                                        value={productAttributes.meta_description.mappedValue as string}
+                                        onChange={(e) => handleProductValueChange('meta_description', e.target.value)}
+                                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                                        rows={3}
+                                        maxLength={255}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {filteredVariantMappings.length === 0 && variantMappings.length > 0 && (
@@ -571,9 +641,32 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
                                     key={variant.id}
                                     className="border-t border-gray-200 pt-8 first:border-t-0 first:pt-0"
                                 >
-                                    <h4 className="text-md font-medium mb-4">
-                                        New Variant: {variant.title} SKU:{variant.sku}
-                                    </h4>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h4 className="text-md font-medium">
+                                                New Variant: {variant.title}
+                                            </h4>
+                                            <div className="text-sm text-gray-500">
+                                                SKU: {variant.sku}
+                                            </div>
+                                        </div>
+                                        <div className="text-sm space-y-1">
+                                            <div>
+                                                <span className="font-medium">Price: </span>
+                                                <span className="text-gray-900">${parseFloat(variant.price).toFixed(2)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-medium">Cost: </span>
+                                                <span className="text-gray-900">
+                                                    ${variant.inventoryCost ? variant.inventoryCost.toFixed(2) : '0.00'}
+                                                </span>
+                                            </div>
+                                            <span className="font-medium">Quantity: </span>
+                                            <span className={`${variant.inventoryQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {variant.inventoryQuantity}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <AttributeMapping
                                         product={product}
                                         variant={variant}

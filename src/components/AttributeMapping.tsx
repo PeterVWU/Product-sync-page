@@ -4,6 +4,7 @@ import { MagentoAttributeMetadata, ShopifyProduct, ShopifyVariant, CategoryOptio
 import { AttributeMappingType } from "../frontendTypes";
 import CategorySelect from './CategorySelect';
 import SearchableSelect from './SearchableSelect';
+import ValidatedBox from "./ValidatedBox";
 
 interface AttributeMappingProps {
     product: ShopifyProduct;
@@ -15,6 +16,54 @@ interface AttributeMappingProps {
     onCancel: () => void;
     hideButtons?: boolean;
     excludeAttributes?: string[];
+}
+
+interface ValidationResult {
+    isValid: boolean;
+    similarity: number;
+}
+
+function validateAttributeMapping(
+    shopifyValue: string,
+    mappedValue: string | string[],
+    options?: Array<{ label: string; value: string }>
+): ValidationResult {
+    if (!mappedValue || (typeof mappedValue === 'string' && !mappedValue.trim())) {
+        return { isValid: false, similarity: 0 };
+    }
+
+    if (Array.isArray(mappedValue)) {
+        return { isValid: mappedValue.length > 0, similarity: 1 };
+    }
+
+    if (!options) {
+        // For text inputs, exact match is valid
+        return {
+            isValid: true,
+            similarity: shopifyValue.toLowerCase() === mappedValue.toLowerCase() ? 1 : 0.7
+        };
+    }
+
+    // For select inputs, check against options
+    const matchingOption = options.find(opt =>
+        opt.value === mappedValue || opt.label.toLowerCase() === mappedValue.toLowerCase()
+    );
+
+    if (matchingOption) {
+        const similarity = getStringSimilarity(shopifyValue.toLowerCase(), matchingOption.label.toLowerCase());
+        return {
+            isValid: true,
+            similarity
+        };
+    }
+
+    return { isValid: false, similarity: 0 };
+}
+
+function getValidationState(validation: ValidationResult): 'valid' | 'warning' | 'error' {
+    if (!validation.isValid) return 'error';
+    if (validation.similarity >= 0.8) return 'valid';
+    return 'warning';
 }
 
 // Helper function to calculate string similarity using Levenshtein distance
@@ -168,12 +217,12 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
     const [mappings, setMappings] = useState<AttributeMappingType>({});
     const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
 
-    // Helper function to check if an attribute mapping is valid
-    const isAttributeMappingValid = (mapping: { mappedTo: string; mappedValue: string | string[] }) => {
-        return !!mapping.mappedTo &&
-            !!mapping.mappedValue &&
-            (typeof mapping.mappedValue === 'string' ? mapping.mappedValue.trim() !== '' : mapping.mappedValue.length > 0);
-    };
+    // // Helper function to check if an attribute mapping is valid
+    // const isAttributeMappingValid = (mapping: { mappedTo: string; mappedValue: string | string[] }) => {
+    //     return !!mapping.mappedTo &&
+    //         !!mapping.mappedValue &&
+    //         (typeof mapping.mappedValue === 'string' ? mapping.mappedValue.trim() !== '' : mapping.mappedValue.length > 0);
+    // };
 
 
     const findBestMatchingCategory = (productType: string): string[] => {
@@ -389,59 +438,72 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
                     const selectedMagentoAttr = attributes.find(attr => attr.attribute_code === mapping.mappedTo);
                     const isSelect = selectedMagentoAttr?.frontend_input === 'select' ||
                         selectedMagentoAttr?.frontend_input === 'multiselect';
-                    const isValid = isAttributeMappingValid(mapping);
-                    const shouldShowValidation = touched[shopifyAttr] || !isValid;
+
+                    const validation = validateAttributeMapping(
+                        mapping.value,
+                        mapping.mappedValue,
+                        isSelect ? getAttributeOptions(mapping.mappedTo) : undefined
+                    );
+
+                    const validationState = touched[shopifyAttr] ? getValidationState(validation) : 'valid';
+
 
                     return (
-                        <div key={shopifyAttr} className={`flex flex-col space-y-2 ${shouldShowValidation && !isValid ? 'border-2 border-red-300 p-2 rounded' : ''}`}>
-                            <div className="flex items-center">
-                                <span className="font-medium text-sm w-48">
-                                    {shopifyAttr}:
-                                </span>
-                                <span className="text-sm text-gray-600">
-                                    {mapping.value}
-                                </span>
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <SearchableSelect
-                                    options={attributes.map(attr => ({
-                                        label: attr.default_frontend_label,
-                                        value: attr.attribute_code
-                                    }))}
-                                    value={mapping.mappedTo}
-                                    onChange={(value) => handleAttributeChange(shopifyAttr, value)}
-                                    placeholder="Select Magento Attribute"
-                                />
+                        <ValidatedBox key={shopifyAttr} validationState={validationState}>
+                            <div className="flex flex-col space-y-2">
+                                <div className="flex items-center">
+                                    <span className="font-medium text-sm w-48">
+                                        {shopifyAttr}:
+                                    </span>
+                                    <span className="text-sm text-gray-600">
+                                        {mapping.value}
+                                    </span>
+                                    {validationState === 'warning' && (
+                                        <span className="ml-2 text-xs text-yellow-600">
+                                            Approximate match
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <SearchableSelect
+                                        options={attributes.map(attr => ({
+                                            label: attr.default_frontend_label,
+                                            value: attr.attribute_code
+                                        }))}
+                                        value={mapping.mappedTo}
+                                        onChange={(value) => handleAttributeChange(shopifyAttr, value)}
+                                        placeholder="Select Magento Attribute"
+                                    />
 
-                                {mapping.mappedTo && (
-                                    <div>
-                                        {isSelect ? (
-                                            <SearchableSelect
-                                                options={getAttributeOptions(mapping.mappedTo).map(opt => ({
-                                                    label: opt.label,
-                                                    value: opt.value
-                                                }))}
-                                                value={mapping.mappedValue as string}
-                                                onChange={(value: string) => handleValueChange(shopifyAttr, value)}
-                                                onOptionsChange={(newOptions) => handleOptionsUpdate(mapping.mappedTo, newOptions)}
-                                                placeholder="Select Value"
-                                                attributeCode={mapping.mappedTo}
-                                                allowCreate={true}
-                                            />
-                                        ) : (
-                                            <input
-                                                type="text"
-                                                value={mapping.mappedValue as string}
-                                                onChange={(e) => handleValueChange(shopifyAttr, e.target.value)}
-                                                placeholder="Enter value"
-                                                className={`w-full h-9 px-3 py-2 text-sm border rounded focus:outline-none focus:border-blue-500 
-                                                    ${!isValid ? 'border-red-300' : 'border-gray-300'}`}
-                                            />
-                                        )}
-                                    </div>
-                                )}
+                                    {mapping.mappedTo && (
+                                        <div>
+                                            {isSelect ? (
+                                                <SearchableSelect
+                                                    options={getAttributeOptions(mapping.mappedTo).map(opt => ({
+                                                        label: opt.label,
+                                                        value: opt.value
+                                                    }))}
+                                                    value={mapping.mappedValue as string}
+                                                    onChange={(value: string) => handleValueChange(shopifyAttr, value)}
+                                                    onOptionsChange={(newOptions) => handleOptionsUpdate(mapping.mappedTo, newOptions)}
+                                                    placeholder="Select Value"
+                                                    attributeCode={mapping.mappedTo}
+                                                    allowCreate={true}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    value={mapping.mappedValue as string}
+                                                    onChange={(e) => handleValueChange(shopifyAttr, e.target.value)}
+                                                    placeholder="Enter value"
+                                                    className="w-full h-9 px-3 py-2 text-sm border rounded focus:outline-none focus:border-blue-500 border-gray-300"
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        </ValidatedBox>
                     );
                 })}
             </div>

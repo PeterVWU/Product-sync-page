@@ -90,7 +90,7 @@ function App() {
           Object.entries(mapping.mappings).forEach(([, attr]) => {
             if (attr?.mappedTo &&
               attr.mappedValue &&
-              !['manufacturer', 'brand', 'description', 'name', 'url_key', 'price', 'status', 'visibility', 'category_ids', 'tax_class_id', 'meta_title', 'meta_description'].includes(attr.mappedTo)) {
+              !['manufacturer', 'brand', 'description', 'name', 'url_key', 'price', 'status', 'visibility', 'category_ids', 'tax_class_id', 'meta_keyword', 'meta_title', 'meta_description'].includes(attr.mappedTo)) {
               let valueSet = configurableAttributes.get(attr.mappedTo);
               if (!valueSet) {
                 valueSet = new Set<string>();
@@ -118,7 +118,7 @@ function App() {
         if (attributesPayload.length === 0) {
           throw new Error('No configurable attributes found');
         }
-
+        console.log('filteredMappings', filteredMappings)
         const response = await fetch('/create-configurable-product', {
           method: 'POST',
           headers: {
@@ -133,6 +133,9 @@ function App() {
               manufacturer: filteredMappings[0].mappings.manufacturer?.mappedValue,
               brand: filteredMappings[0].mappings.brand?.mappedValue,
               category_ids: filteredMappings[0].mappings.category_ids?.mappedValue,
+              meta_title: filteredMappings[0].mappings.meta_title?.mappedValue,
+              meta_keyword: filteredMappings[0].mappings.meta_keyword?.mappedValue,
+              meta_description: filteredMappings[0].mappings.meta_description?.mappedValue,
             }
           }),
         });

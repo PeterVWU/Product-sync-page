@@ -53,6 +53,12 @@ const SHOPIFY_PRODUCT_QUERY = `
                 sku
                 price
                 title
+                inventoryItem {
+                    unitCost {
+                        amount
+                    }
+                }
+                inventoryQuantity
                 selectedOptions {
                   name
                   value
@@ -80,6 +86,12 @@ function normalizeUrl(url: string): string {
   }
   return url;
 }
+
+function formatCost(cost: string): number {
+  if (cost === undefined) return 0;
+  return Number(cost);
+}
+
 async function searchShopifyProduct(searchTerm: string, env: Env, logger: Logger): Promise<ShopifyProduct | null> {
   const baseUrl = normalizeUrl(env.SHOPIFY_STORE_URL);
   logger.log('Searching Shopify product', { searchTerm });
@@ -142,6 +154,8 @@ async function searchShopifyProduct(searchTerm: string, env: Env, logger: Logger
       title: variantEdge.node.title,
       selectedOptions: variantEdge.node.selectedOptions,
       updatedAt: variantEdge.node.updatedAt,
+      inventoryCost: formatCost(variantEdge.node.inventoryItem?.unitCost?.amount),
+      inventoryQuantity: variantEdge.node.inventoryQuantity,
       image: variantEdge.node.image ? {
         id: variantEdge.node.image.id,
         url: variantEdge.node.image.url,

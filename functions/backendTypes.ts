@@ -16,6 +16,8 @@ export interface ShopifyVariant {
     }[];
     updatedAt: string;
     image: ShopifyImage | null;
+    inventoryQuantity: number;
+    inventoryCost: number;
 }
 
 export interface ShopifyImage {
@@ -117,6 +119,12 @@ export interface ShopifyGraphQLResponse {
                                 sku: string;
                                 price: string;
                                 title: string;
+                                inventoryItem: {
+                                    unitCost: {
+                                        amount: string
+                                    }
+                                };
+                                inventoryQuantity: number;
                                 selectedOptions: {
                                     name: string;
                                     value: string;
