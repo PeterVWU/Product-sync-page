@@ -366,6 +366,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
                 value: productAttributes.meta_description
             });
         }
+        const WEBSITE_IDS = [1, 2];
+
         const configurableProduct = {
             product: {
                 sku: configurableSku,
@@ -382,7 +384,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
                         is_in_stock: true,
                         qty: 0
                     },
-                    website_ids: [1],
+                    website_ids: WEBSITE_IDS,
                     category_links: productAttributes.category_ids?.map(categoryId => ({
                         category_id: categoryId,
                         position: 0

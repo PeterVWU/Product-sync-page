@@ -20,6 +20,12 @@ function App() {
     total: number;
     status: string;
   } | null>(null);
+  const [shopifyImporting, setShopifyImporting] = useState(false);
+  const [shopifyImportProgress, setShopifyImportProgress] = useState<{
+    current: number;
+    total: number;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -223,6 +229,67 @@ function App() {
     setImportStatus(null);
   };
 
+  const handleShopifyImport = async (product: ShopifyProduct, selectedStores: string[]) => {
+    if (selectedStores.length === 0) {
+      setImportStatus('Please select at least one target store');
+      return;
+    }
+
+    try {
+      setShopifyImporting(true);
+      setImportStatus('Importing to selected Shopify stores...');
+
+      setShopifyImportProgress({
+        current: 0,
+        total: selectedStores.length,
+        status: 'Starting import to Shopify stores...'
+      });
+
+      const response = await fetch('/import-to-shopify-batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shopifyProduct: product,
+          targetStoreIds: selectedStores
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Import failed');
+      }
+
+      const { summary, results } = result;
+
+      setShopifyImportProgress({
+        current: summary.successful,
+        total: summary.total,
+        status: `Import complete: ${summary.successful} successful, ${summary.failed} failed`
+      });
+
+      setImportStatus(
+        results.map((r: any) =>
+          `${r.storeName}: ${r.success ? 'Success' : `Failed - ${r.error}`}`
+        ).join('\n')
+      );
+
+      if (summary.successful > 0) {
+        setTimeout(() => {
+          setShopifyImportProgress(null);
+          setSelectedProduct(null);
+          setVariantMappings([]);
+        }, 3000);
+      }
+    } catch (err) {
+      setImportStatus(`Import failed: ${(err as Error).message}`);
+    } finally {
+      setShopifyImporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -264,6 +331,9 @@ function App() {
             onCancel={handleCancel}
             importing={importing}
             importProgress={importProgress}
+            shopifyImporting={shopifyImporting}
+            shopifyImportProgress={shopifyImportProgress}
+            onShopifyImport={handleShopifyImport}
           />
 
         ) : (

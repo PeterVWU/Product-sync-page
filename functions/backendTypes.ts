@@ -3,6 +3,8 @@ export interface Env {
     SHOPIFY_ACCESS_TOKEN: string;
     MAGENTO_BASE_URL: string;
     MAGENTO_ACCESS_TOKEN: string;
+    ADDITIONAL_SHOPIFY_STORES: string;
+    ADDITIONAL_SHOPIFY_TOKENS: string;
 }
 
 export interface ShopifyVariant {
@@ -81,7 +83,8 @@ export interface MagentoProduct {
             manage_stock: boolean,
             is_in_stock: boolean,
             qty: number
-        }
+        },
+        website_ids: number[]
     }
 }
 
@@ -181,4 +184,10 @@ export interface AttributeMappingType {
         mappedTo: string;
         mappedValue: string | string[];
     };
+}
+
+export interface ShopifyStoreConfig {
+    id: string;
+    name: string;
+    storeUrl: string;
 }

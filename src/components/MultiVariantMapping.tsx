@@ -6,6 +6,7 @@ import AttributeMapping from './AttributeMapping';
 import CategorySelect from './CategorySelect';
 import SearchableSelect from './SearchableSelect';
 import ProductMapper from "./ProductMapper";
+import TargetStoreSelector from "./TargetStoreSelector";
 
 
 // Add new interface for validation state
@@ -161,6 +162,13 @@ interface MultiVariantMappingProps {
         total: number;
         status: string;
     } | null;
+    shopifyImporting: boolean;
+    shopifyImportProgress: {
+        current: number;
+        total: number;
+        status: string;
+    } | null;
+    onShopifyImport: (product: ShopifyProduct, selectedStores: string[]) => void;
 }
 
 const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
@@ -173,7 +181,10 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
     onSave,
     onCancel,
     importing,
-    importProgress
+    importProgress,
+    onShopifyImport,
+    shopifyImporting,
+    shopifyImportProgress,
 }) => {
 
     // Initialize product attributes with best matches
@@ -192,6 +203,8 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
         },
         variants: {}
     });
+    const [selectedShopifyStores, setSelectedShopifyStores] = useState<string[]>([]);
+    const [showShopifyImport, setShowShopifyImport] = useState(false);
 
     // Update validation state whenever mappings change
     useEffect(() => {
@@ -383,21 +396,7 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
         onUpdateMapping(index, combinedMappings);
     };
 
-    // List of attributes that should not be configurable
-    // const nonConfigurableAttributes = [
-    //     'manufacturer',
-    //     'brand',
-    //     'description',
-    //     'name',
-    //     'url_key',
-    //     'price',
-    //     'status',
-    //     'visibility',
-    //     'category_ids',
-    //     'tax_class_id',
-    //     'meta_title',
-    //     'meta_description'
-    // ];
+
 
     const handleSave = async () => {
         if (!configurableSku) {
@@ -676,31 +675,78 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
                                         onAttributesUpdate={onAttributesUpdate}
                                         onCancel={onCancel}
                                         hideButtons
-                                        excludeAttributes={['vendor', 'brand', 'category_ids', "description"]}
+                                        excludeAttributes={['title', 'vendor', 'brand', 'category_ids', "description"]}
                                     />
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    {importProgress && (
-                        <div className="px-6 py-4 border-t border-gray-200">
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">{importProgress.status}</span>
+                    <div className="px-6 py-4 border-t border-gray-200">
+                        <button
+                            onClick={() => setShowShopifyImport(!showShopifyImport)}
+                            className="px-4 py-2 text-sm border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition-colors"
+                        >
+                            {showShopifyImport ? 'Hide Shopify Import' : 'Import to Other Shopify Stores'}
+                        </button>
 
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                    <div
-                                        className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-in-out"
-                                        style={{
-                                            width: `${(importProgress.current / importProgress.total) * 100}%`
-                                        }}
-                                    />
+                        {showShopifyImport && (
+                            <div className="mt-4 space-y-4">
+                                <TargetStoreSelector
+                                    onSelectionChange={setSelectedShopifyStores}
+                                    disabled={shopifyImporting}
+                                    importing={shopifyImporting}
+                                />
+
+                                <div className="flex justify-end space-x-4">
+                                    <button
+                                        onClick={() => onShopifyImport(product, selectedShopifyStores)}
+                                        disabled={shopifyImporting || selectedShopifyStores.length === 0}
+                                        className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:bg-blue-300"
+                                    >
+                                        {shopifyImporting ? 'Importing to Shopify...' : 'Import to Selected Stores'}
+                                    </button>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
+                    {(importProgress || shopifyImportProgress) && (
+                        <div className="px-6 py-4 border-t border-gray-200">
+                            <div className="space-y-2">
+                                {importProgress && (
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-600">{importProgress.status}</span>
+
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div
+                                                className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-in-out"
+                                                style={{
+                                                    width: `${(importProgress.current / importProgress.total) * 100}%`
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {shopifyImportProgress && (
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-600">Shopify Import: {shopifyImportProgress.status}</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div
+                                                className="bg-green-500 h-2 rounded-full transition-all duration-300 ease-in-out"
+                                                style={{
+                                                    width: `${(shopifyImportProgress.current / shopifyImportProgress.total) * 100}%`
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div></div>)}
 
                     {/* Action buttons */}
                     {filteredVariantMappings.length > 0 && (
@@ -710,7 +756,7 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
                                 disabled={importing}
                                 className="px-4 py-2 text-sm rounded transition-colors bg-blue-500 text-white hover:bg-blue-600"
                             >
-                                {importing ? 'Importing...' : 'Import All Variants'}
+                                {importing ? 'Importing...' : 'Import to Magento'}
                             </button>
                             <button
                                 onClick={onCancel}

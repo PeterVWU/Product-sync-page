@@ -62,7 +62,7 @@ function validateAttributeMapping(
 
 function getValidationState(validation: ValidationResult): 'valid' | 'warning' | 'error' {
     if (!validation.isValid) return 'error';
-    if (validation.similarity >= 0.8) return 'valid';
+    if (validation.similarity >= 1) return 'valid';
     return 'warning';
 }
 
@@ -216,13 +216,6 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
 }) => {
     const [mappings, setMappings] = useState<AttributeMappingType>({});
     const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
-
-    // // Helper function to check if an attribute mapping is valid
-    // const isAttributeMappingValid = (mapping: { mappedTo: string; mappedValue: string | string[] }) => {
-    //     return !!mapping.mappedTo &&
-    //         !!mapping.mappedValue &&
-    //         (typeof mapping.mappedValue === 'string' ? mapping.mappedValue.trim() !== '' : mapping.mappedValue.length > 0);
-    // };
 
 
     const findBestMatchingCategory = (productType: string): string[] => {

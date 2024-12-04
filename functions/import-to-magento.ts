@@ -330,6 +330,7 @@ async function transformToMagentoProduct(
             value: urlKey
         });
     }
+    const WEBSITE_IDS = [1, 2];
 
     const product: MagentoProduct = {
         sku: variant.sku,
@@ -349,7 +350,8 @@ async function transformToMagentoProduct(
                 manage_stock: true,
                 is_in_stock: variant.inventoryQuantity > 0,
                 qty: variant.inventoryQuantity
-            }
+            },
+            website_ids: WEBSITE_IDS
         }
     };
 

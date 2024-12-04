@@ -142,15 +142,16 @@ const ProductMapper: React.FC<ProductMapperProps> = ({
                                 </button>
                             </div>
                         </div>
-                        <div className="flex justify-center">
-                            <button
-                                onClick={onContinueWithNew}
-                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-                            >
-                                Create New Configurable Product Instead
-                            </button>
-                        </div>
                     </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                    <button
+                        onClick={onContinueWithNew}
+                        className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        Create New Configurable Product Instead
+                    </button>
                 </div>
             </div>
         </div>
