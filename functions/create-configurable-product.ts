@@ -272,6 +272,66 @@ async function setupConfigurableAttributes(
     }
 }
 
+function transformDescription(shopifyHtml: string): string {
+    // Clean up HTML entities
+    let description = shopifyHtml
+        .replace(/&amp;amp;/g, '&')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"');
+
+    // Add Magento's required wrapper structure
+    const styleBlock = `<style>
+        #html-body [data-pb-style=MAIN_CONTENT] {
+            justify-content: flex-start;
+            display: flex;
+            flex-direction: column;
+            background-position: left top;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: scroll
+        }
+    </style>`;
+
+    // Transform headings
+    description = description.replace(/<p><strong>(.*?)<\/strong><\/p>/g, '<h2>$1</h2>');
+
+    // Add color to regular paragraph text for better visibility
+    description = description.replace(
+        /<p>(?!<strong>)(.*?)(<\/p>)/g,
+        '<p><span style="color: #41362f;">$1</span>$2'
+    );
+
+    // Enhance list items with better spacing and structure
+    description = description.replace(
+        /<li>\s*<strong>(.*?)<\/strong>\s*-\s*(.*?)<\/li>/g,
+        '<li><div><div><strong>$1</strong>: $2</div></div></li>'
+    );
+
+    // Add Magento's page builder structure
+    const wrappedContent = `
+        <div data-content-type="row" data-appearance="contained" data-element="main">
+            <div data-enable-parallax="0" 
+                 data-parallax-speed="0.5" 
+                 data-background-images="{}" 
+                 data-background-type="image" 
+                 data-video-loop="true" 
+                 data-video-play-only-visible="true" 
+                 data-video-lazy-load="true" 
+                 data-video-fallback-src="" 
+                 data-element="inner" 
+                 data-pb-style="MAIN_CONTENT">
+                <div data-content-type="text" data-appearance="default" data-element="main">
+                    ${description}
+                </div>
+            </div>
+        </div>
+    `;
+
+    return styleBlock + wrappedContent;
+}
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
     const request = context.request;
     const env = context.env;
@@ -315,12 +375,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
                 value: "4"
             }
         ];
-
         // Add product-level attributes
         if (productAttributes.description) {
+            const transformedHtml = transformDescription(productAttributes.description)
             customAttributes.push({
                 attribute_code: "description",
-                value: productAttributes.description
+                value: transformedHtml
             });
         }
 
