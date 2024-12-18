@@ -11,4 +11,19 @@ export default defineConfig({
       mangle: false,
     },
   },
+  server: {
+    proxy: {
+      // Proxy all /api requests to Wrangler
+      '/import-to-shopify-batch': 'http://localhost:8788',
+      '/get-shopify-stores': 'http://localhost:8788',
+      '/get-magento-attributes': 'http://localhost:8788',
+      '/get-magento-categories': 'http://localhost:8788',
+      '/get-shopify-products': 'http://localhost:8788',
+      '/search-magento-products': 'http://localhost:8788',
+      '/create-configurable-product': 'http://localhost:8788',
+      '/get-configurable-variants': 'http://localhost:8788',
+      '/create-attribute-value': 'http://localhost:8788',
+      '/import-to-magento': 'http://localhost:8788'
+    }
+  }
 })
