@@ -48,7 +48,7 @@ const ProductMapper: React.FC<ProductMapperProps> = ({
                 throw new Error('Failed to search Magento products');
             }
 
-            const data = await response.json();
+            const data: any = await response.json();
             setSearchResults(data.products);
             setSearched(true);
         } catch (err) {

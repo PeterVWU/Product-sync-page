@@ -31,13 +31,13 @@ function App() {
     Promise.all([
       fetch('/get-magento-attributes')
         .then(res => res.json())
-        .then(data => {
+        .then((data: any) => {
           if (data.error) throw new Error(data.error);
           return data.attributes;
         }),
       fetch('/get-magento-categories')
         .then(res => res.json())
-        .then(data => {
+        .then((data: any) => {
           if (data.error) throw new Error(data.error);
           return data.categories;
         })
@@ -147,7 +147,7 @@ function App() {
         });
 
         if (!response.ok) {
-          const error = await response.json();
+          const error: any = await response.json();
           throw new Error(error.error || 'Failed to create configurable product');
         }
       }
@@ -174,7 +174,7 @@ function App() {
         });
 
         if (!response.ok) {
-          const data = await response.json();
+          const data: any = await response.json();
           throw new Error(`Failed to import variant ${variant.title}: ${data.error}`);
         }
 
@@ -256,7 +256,7 @@ function App() {
         }),
       });
 
-      const result = await response.json();
+      const result: any = await response.json();
 
       if (!response.ok) {
         throw new Error(result.error || 'Import failed');

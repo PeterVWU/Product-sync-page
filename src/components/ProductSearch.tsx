@@ -20,7 +20,7 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
             setError(null);
 
             const response = await fetch(`/get-shopify-products?search=${encodeURIComponent(searchTerm)}`);
-            const data = await response.json();
+            const data: any = await response.json();
 
             if (data.error) {
                 throw new Error(data.error);
