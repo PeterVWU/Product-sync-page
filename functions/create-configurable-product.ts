@@ -1,4 +1,5 @@
-import { Env, LogEntry, MagentoError, ShopifyProduct } from "./backendTypes";
+import { Env, ShopifyProduct } from "./backendTypes";
+import Logger from './logger';
 
 interface AttributeData {
     code: string;
@@ -24,31 +25,6 @@ interface CreateConfigurableRequest {
     productAttributes: ProductAttributes;
 }
 
-class Logger {
-    private logs: LogEntry[] = [];
-    private startTime: number;
-
-    constructor() {
-        this.startTime = Date.now();
-    }
-
-    log(event: string, details?: any) {
-        const entry: LogEntry = {
-            timestamp: new Date().toISOString(),
-            event,
-            details,
-            duration: Date.now() - this.startTime
-        };
-        this.logs.push(entry);
-        console.log(JSON.stringify(entry));
-    }
-
-    getLogs() {
-        return this.logs;
-    }
-}
-
-
 async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
     const bytes = new Uint8Array(buffer);
     let binary = '';
@@ -73,7 +49,8 @@ async function fetchImageAsBase64(imageUrl: string, logger: Logger): Promise<{ b
     try {
         const mimeType = getMimeType(imageUrl);
         if (!mimeType) {
-            logger.log('Unsupported image type', { url: imageUrl });
+            logger.error('Unsupported image type', { url: imageUrl });
+            await logger.flush();
             return null;
         }
 
@@ -84,25 +61,28 @@ async function fetchImageAsBase64(imageUrl: string, logger: Logger): Promise<{ b
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.startsWith('image/')) {
-            logger.log('Invalid content type', { url: imageUrl, contentType });
+            logger.error('Invalid content type', { url: imageUrl, contentType });
+            await logger.flush();
             return null;
         }
 
         const arrayBuffer = await response.arrayBuffer();
         const base64Data = await arrayBufferToBase64(arrayBuffer);
 
-        logger.log('Image processed', {
+        logger.info('Image processed', {
             url: imageUrl,
             size: arrayBuffer.byteLength,
             mimeType
         });
+        await logger.flush();
 
         return { base64Data, mimeType };
     } catch (error) {
-        logger.log('Image fetch failed', {
+        logger.error('Image fetch failed', {
             error: (error as Error).message,
             url: imageUrl
         });
+        await logger.flush();
         return null;
     }
 }
@@ -123,7 +103,8 @@ async function getAttributeDetails(attributeCode: string, env: Env, logger: Logg
 }> {
     const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
 
-    logger.log('Getting attribute details', { attributeCode });
+    logger.info('Getting attribute details', { attributeCode });
+    await logger.flush();
 
     const response = await fetch(
         `${baseUrl}/rest/V1/products/attributes/${attributeCode}`,
@@ -183,16 +164,18 @@ async function processProductImages(shopifyProduct: ShopifyProduct, logger: Logg
                     }
                 });
 
-                logger.log('Processed product image', {
+                logger.info('Processed product image', {
                     position: index + 1,
                     imageUrl: image.url
                 });
+                await logger.flush();
             }
         } catch (error) {
-            logger.log('Error processing product image', {
+            logger.error('Error processing product image', {
                 error: (error as Error).message,
                 imageUrl: image.url
             });
+            await logger.flush();
         }
     }
 
@@ -210,7 +193,7 @@ async function setupConfigurableAttributes(
 ): Promise<void> {
     const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
 
-    logger.log('Setting up configurable attributes', {
+    logger.info('Setting up configurable attributes', {
         sku,
         attributes: attributeData.map(a => ({
             code: a.code,
@@ -235,10 +218,11 @@ async function setupConfigurableAttributes(
                 }))
             };
 
-            logger.log('Creating configurable attribute option', {
+            logger.info('Creating configurable attribute option', {
                 attribute: attr.code,
                 optionValues: attr.valueIds
             });
+            await logger.flush();
 
             const response = await fetch(
                 `${baseUrl}/rest/V1/configurable-products/${encodeURIComponent(sku)}/options`,
@@ -257,16 +241,18 @@ async function setupConfigurableAttributes(
                 throw new Error(`Failed to set option for ${attr.code}: ${error.message}`);
             }
 
-            logger.log('Successfully created configurable attribute option', {
+            logger.info('Successfully created configurable attribute option', {
                 attribute: attr.code,
                 values: attr.valueIds
             });
+            await logger.flush();
 
         } catch (error) {
-            logger.log('Error processing attribute', {
+            logger.error('Error processing attribute', {
                 attribute: attr.code,
                 error: (error as Error).message
             });
+            await logger.flush();
             throw error;
         }
     }
@@ -335,14 +321,14 @@ function transformDescription(shopifyHtml: string): string {
 export const onRequestPost: PagesFunction<Env> = async (context) => {
     const request = context.request;
     const env = context.env;
-    const logger = new Logger();
-    logger.log('Worker started', { method: request.method });
+    const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
+    logger.info('Starting create configreable product request', { method: request.method });
 
     try {
         const { shopifyProduct, configurableSku, attributes, productAttributes } =
             await request.json() as CreateConfigurableRequest;
 
-        logger.log('Received request', {
+        logger.info('Received request', {
             sku: configurableSku,
             productTitle: shopifyProduct.title,
             attributeCodes: attributes.map(a => a.code),
@@ -455,10 +441,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             }
         };
 
-        logger.log('Creating configurable product', {
+        logger.info('Creating configurable product', {
             sku: configurableSku,
             payload: configurableProduct
         });
+        await logger.flush();
 
         const response = await fetch(
             `${baseUrl}/rest/V1/products`,
@@ -474,7 +461,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
         if (!response.ok) {
             const error: any = await response.json();
-            logger.log('Failed to create configurable product', { error });
+            logger.error('Failed to create configurable product', { error });
+            await logger.flush();
             return new Response(JSON.stringify({
                 error: `Failed to create configurable product: ${error.message || 'Unknown error'}`
             }), {
@@ -486,10 +474,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         // Set up configurable attributes after product creation
         await setupConfigurableAttributes(configurableSku, shopifyProduct, attributes, env, logger);
 
-        logger.log('Created configurable product successfully', {
+        logger.info('Created configurable product successfully', {
             sku: configurableSku,
             attributes: attributes.map(a => a.code)
         });
+        await logger.flush();
         return new Response(JSON.stringify({
             success: true,
             message: 'Configurable product created successfully',
@@ -502,9 +491,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         });
 
     } catch (err) {
-        logger.log('Error creating configurable product', {
+        logger.error('Error creating configurable product', {
             error: (err as Error).message
         });
+        await logger.flush();
 
         return new Response(JSON.stringify({
             error: (err as Error).message,

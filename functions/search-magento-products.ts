@@ -1,4 +1,5 @@
-import { Env, LogEntry } from "./backendTypes";
+import { Env } from "./backendTypes";
+import Logger from './logger';
 
 function normalizeUrl(url: string): string {
     url = url.replace(/\/+$/, '');
@@ -12,6 +13,9 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     const { searchParams } = new URL(context.request.url);
     const searchBase = searchParams.get('searchBase');
     const env = context.env;
+    const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
+    logger.info('Starting search magento produicts', { method: context.request.method });
+    await logger.flush();
 
     if (!searchBase) {
         return new Response(JSON.stringify({ error: 'Search base required' }), {
@@ -54,6 +58,11 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        logger.error('Search magento product failed', {
+            error: (error as Error).message
+        });
+
+        await logger.flush();
         return new Response(JSON.stringify({ error: (error as Error).message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },

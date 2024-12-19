@@ -1,28 +1,5 @@
-import { Env, LogEntry, ShopifyGraphQLResponse, ShopifyProduct } from "./backendTypes";
-
-class Logger {
-  private logs: LogEntry[] = [];
-  private startTime: number;
-
-  constructor() {
-    this.startTime = Date.now();
-  }
-
-  log(event: string, details?: any) {
-    const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
-      event,
-      details,
-      duration: Date.now() - this.startTime
-    };
-    this.logs.push(entry);
-    console.log(JSON.stringify(entry));
-  }
-
-  getLogs() {
-    return this.logs;
-  }
-}
+import { Env, ShopifyGraphQLResponse, ShopifyProduct } from "./backendTypes";
+import Logger from './logger';
 
 const SHOPIFY_PRODUCT_QUERY = `
   query GetProduct($query: String!) {
@@ -94,7 +71,8 @@ function formatCost(cost: string): number {
 
 async function searchShopifyProduct(searchTerm: string, env: Env, logger: Logger): Promise<ShopifyProduct | null> {
   const baseUrl = normalizeUrl(env.SHOPIFY_STORE_URL);
-  logger.log('Searching Shopify product', { searchTerm });
+  logger.info('Searching Shopify product', { searchTerm });
+  await logger.flush();
 
   const startTime = Date.now();
   const response = await fetch(
@@ -116,17 +94,19 @@ async function searchShopifyProduct(searchTerm: string, env: Env, logger: Logger
 
   if (!response.ok) {
     const error = `Shopify API error: ${response.status} ${response.statusText}`;
-    logger.log('Shopify API Error', { error, status: response.status });
+    logger.error('Shopify API Error', { error, status: response.status });
+    await logger.flush();
     throw new Error(error);
   }
 
   const data = await response.json() as ShopifyGraphQLResponse;
   const duration = Date.now() - startTime;
 
-  logger.log('Shopify product search completed', {
+  logger.info('Shopify product search completed', {
     found: data.data.products.edges.length > 0,
     duration: `${duration}ms`
   });
+  await logger.flush();
 
   if (data.data.products.edges.length === 0) {
     return null;
@@ -167,12 +147,14 @@ async function searchShopifyProduct(searchTerm: string, env: Env, logger: Logger
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const env = context.env;
-  const logger = new Logger();
-  logger.log('Worker started', { method: context.request.method });
+  const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
+  logger.info('Starting get shopify products', { method: context.request.method });
+  await logger.flush();
 
   try {
     if (!env.SHOPIFY_STORE_URL || !env.SHOPIFY_ACCESS_TOKEN) {
-      logger.log('Missing environment variables');
+      logger.info('Missing environment variables');
+      await logger.flush();
       return new Response(JSON.stringify({
         error: 'Missing required environment variables. Please check SHOPIFY_STORE_URL and SHOPIFY_ACCESS_TOKEN are set.'
       }), {
@@ -197,18 +179,17 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     return new Response(JSON.stringify({
       product,
-      logs: logger.getLogs()
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
     const error = err as Error;
-    logger.log('Failed to search product', { error: error.message });
+    logger.error('Failed to search product', { error: error.message });
+    await logger.flush();
 
     return new Response(JSON.stringify({
       error: error.message,
-      details: 'If this is a URL error, please check that your SHOPIFY_STORE_URL is correctly formatted',
-      logs: logger.getLogs()
+      details: 'If this is a URL error, please check that your SHOPIFY_STORE_URL is correctly formatted'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

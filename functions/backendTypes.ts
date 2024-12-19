@@ -5,6 +5,7 @@ export interface Env {
     MAGENTO_ACCESS_TOKEN: string;
     ADDITIONAL_SHOPIFY_STORES: string;
     ADDITIONAL_SHOPIFY_TOKENS: string;
+    PRODUCT_SYNC_LOGS: KVNamespace;
 }
 
 export interface ShopifyVariant {
@@ -142,13 +143,6 @@ export interface ShopifyGraphQLResponse {
             }>;
         };
     };
-}
-
-export interface LogEntry {
-    timestamp: string;
-    event: string;
-    details?: any;
-    duration?: number;
 }
 
 export interface MagentoCategory {
