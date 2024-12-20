@@ -5,6 +5,8 @@ import { MagentoAttributeMetadata, ShopifyProduct, CategoryOption } from '../fun
 import { AttributeMappingType, VariantMapping } from "./frontendTypes";
 import ProductSearch from "./components/ProductSearch";
 import MultiVariantMapping from "./components/MultiVariantMapping";
+import Modal from './components/Modal';
+import LogsViewer from './components/LogsViewer';
 
 function App() {
   const [attributes, setAttributes] = useState<MagentoAttributeMetadata[]>([]);
@@ -26,6 +28,7 @@ function App() {
     total: number;
     status: string;
   } | null>(null);
+  const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -309,7 +312,15 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-bold mb-8 text-center">Shopify to Magento Product Sync</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold">Shopify to Magento Product Sync</h1>
+          <button
+            onClick={() => setShowLogs(true)}
+            className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+          >
+            View Logs
+          </button>
+        </div>
 
         {importStatus && (
           <div className={`mb-6 p-4 rounded-lg ${importStatus.includes('failed')
@@ -341,6 +352,15 @@ function App() {
             onImportAll={handleImportAll}
           />
         )}
+
+        <Modal
+          isOpen={showLogs}
+          onClose={() => setShowLogs(false)}
+          title="System Logs"
+          size="xl"
+        >
+          <LogsViewer />
+        </Modal>
       </div>
     </div>
   )
