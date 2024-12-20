@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 const LogsViewer = () => {
     const [logs, setLogs] = useState([]);
@@ -72,8 +72,8 @@ const LogsViewer = () => {
                                 <div
                                     key={index}
                                     className={`p-2 rounded text-sm ${entry.level === 'error' ? 'bg-red-50 text-red-700' :
-                                            entry.level === 'warn' ? 'bg-yellow-50 text-yellow-700' :
-                                                'bg-gray-50 text-gray-700'
+                                        entry.level === 'warn' ? 'bg-yellow-50 text-yellow-700' :
+                                            'bg-gray-50 text-gray-700'
                                         }`}
                                 >
                                     <div className="flex items-center justify-between">
