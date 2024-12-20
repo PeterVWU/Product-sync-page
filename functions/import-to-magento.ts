@@ -1,4 +1,5 @@
-import { Env, LogEntry, MagentoError, MagentoProduct, ShopifyProduct, ShopifyVariant } from "./backendTypes";
+import { Env, MagentoError, MagentoProduct, ShopifyProduct, ShopifyVariant } from "./backendTypes";
+import Logger from './logger';
 
 interface ImportRequest {
     shopifyProduct: ShopifyProduct;
@@ -14,57 +15,8 @@ interface ImportRequest {
     isNewConfigurable: boolean;
 }
 
-
-class Logger {
-    private logs: LogEntry[] = [];
-    private startTime: number;
-
-    constructor() {
-        this.startTime = Date.now();
-    }
-
-    log(event: string, details?: any) {
-        const entry: LogEntry = {
-            timestamp: new Date().toISOString(),
-            event,
-            details,
-            duration: Date.now() - this.startTime
-        };
-        this.logs.push(entry);
-        console.log(JSON.stringify(entry));
-    }
-
-    getLogs() {
-        return this.logs;
-    }
-}
-
-async function getConfigurableAttributes(
-    configurableSku: string,
-    env: Env,
-    logger: Logger
-): Promise<Array<{ attribute_id: string; code: string }>> {
-    const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
-
-    logger.log('Getting configurable attributes', { configurableSku });
-
-    const response = await fetch(
-        `${baseUrl}/rest/V1/configurable-products/${encodeURIComponent(configurableSku)}/options/all`,
-        {
-            headers: {
-                Authorization: `Bearer ${env.MAGENTO_ACCESS_TOKEN}`,
-            }
-        }
-    );
-
-    if (!response.ok) {
-        const error: any = await response.json();
-        throw new Error(`Failed to get configurable attributes: ${error.message}`);
-    }
-
-    const attributes: any = await response.json();
-    logger.log('Retrieved configurable attributes', { attributes });
-    return attributes;
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
 }
 
 async function linkVariantToConfigurable(
@@ -76,7 +28,7 @@ async function linkVariantToConfigurable(
 ): Promise<void> {
     const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
 
-    logger.log('Linking variant to configurable product', {
+    logger.info('Linking variant to configurable product', {
         configurableSku,
         variantSku,
         attributeMappings
@@ -103,12 +55,13 @@ async function linkVariantToConfigurable(
             throw new Error(`Failed to link variant: ${error.message}`);
         }
 
-        logger.log('Successfully linked variant', {
+        logger.info('Successfully linked variant', {
             configurableSku,
             variantSku
         });
+        await logger.flush();
     } catch (error) {
-        logger.log('Error linking variant', {
+        logger.error('Error linking variant', {
             error: (error as Error).message,
             configurableSku,
             variantSku
@@ -144,7 +97,8 @@ async function fetchImageAsBase64(imageUrl: string, logger: Logger): Promise<{ b
     try {
         const mimeType = getMimeType(imageUrl);
         if (!mimeType) {
-            logger.log('Unsupported image type', { url: imageUrl });
+            logger.error('Unsupported image type', { url: imageUrl });
+            await logger.flush();
             return null;
         }
 
@@ -156,11 +110,12 @@ async function fetchImageAsBase64(imageUrl: string, logger: Logger): Promise<{ b
         // Verify content type from response
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.startsWith('image/')) {
-            logger.log('Invalid content type', { url: imageUrl, contentType });
+            logger.error('Invalid content type', { url: imageUrl, contentType });
+            await logger.flush();
             return null;
         }
 
-        logger.log('Fetching image', {
+        logger.info('Fetching image', {
             url: imageUrl,
             mimeType,
             contentType
@@ -169,19 +124,21 @@ async function fetchImageAsBase64(imageUrl: string, logger: Logger): Promise<{ b
         const arrayBuffer = await response.arrayBuffer();
         const base64Data = await arrayBufferToBase64(arrayBuffer);
 
-        logger.log('Image processed', {
+        logger.info('Image processed', {
             url: imageUrl,
             size: arrayBuffer.byteLength,
             mimeType,
             base64Preview: base64Data.substring(0, 50) + '...'
         });
+        await logger.flush();
 
         return { base64Data, mimeType };
     } catch (error) {
-        logger.log('Image fetch failed', {
+        logger.error('Image fetch failed', {
             error: (error as Error).message,
             url: imageUrl
         });
+        await logger.flush();
         return null;
     }
 }
@@ -199,7 +156,7 @@ async function checkMagentoProduct(sku: string, env: Env, logger: Logger): Promi
     try {
         const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
         const encodedSku = encodeURIComponent(sku);
-        logger.log('Checking Magento product', { sku, url: `${baseUrl}/rest/V1/products/${encodedSku}` });
+        logger.info('Checking Magento product', { sku, url: `${baseUrl}/rest/V1/products/${encodedSku}` });
 
         const startTime = Date.now();
         const response = await fetch(
@@ -211,15 +168,17 @@ async function checkMagentoProduct(sku: string, env: Env, logger: Logger): Promi
             }
         );
 
-        logger.log('Magento product check complete', {
+        logger.info('Magento product check complete', {
             sku,
             exists: response.ok,
             duration: `${Date.now() - startTime}ms`
         });
+        await logger.flush();
 
         return response.ok;
     } catch (error) {
-        logger.log('Magento product check error', { sku, error: (error as Error).message });
+        logger.error('Magento product check error', { sku, error: (error as Error).message });
+        await logger.flush();
         return false;
     }
 }
@@ -241,11 +200,12 @@ async function transformToMagentoProduct(
 ): Promise<MagentoProduct> {
     // Validate SKU first
     const validatedSku = validateSku(variant.sku);
-    logger.log('Validating SKU', {
+    logger.info('Validating SKU', {
         originalSku: variant.sku,
         validatedSku,
         variantTitle: variant.title
     });
+    await logger.flush();
 
     const customAttributes: Array<{ attribute_code: string; value: string }> = [];
 
@@ -295,27 +255,30 @@ async function transformToMagentoProduct(
                     file: filename
                 });
 
-                logger.log('Processed variant image', {
+                logger.info('Processed variant image', {
                     sku: validatedSku,
                     filename,
                     mimeType,
                     hasBase64Data: !!base64Data,
                     base64Preview: base64Data.substring(0, 30) + '...'
                 });
+                await logger.flush();
             }
         } catch (error) {
-            logger.log('Error processing variant image', {
+            logger.error('Error processing variant image', {
                 sku: validatedSku,
                 variant: variant.title,
                 error: (error as Error).message,
                 imageUrl: imageToUse.url
             });
+            await logger.flush();
         }
     } else {
-        logger.log('No image available for variant', {
+        logger.info('No image available for variant', {
             sku: validatedSku,
             variant: variant.title
         });
+        await logger.flush();
     }
 
     // Add URL key to custom attributes if not present
@@ -355,18 +318,19 @@ async function transformToMagentoProduct(
         }
     };
 
-    logger.log('Transformed product', {
+    logger.info('Transformed product', {
         sku: product.sku,
         name: product.name,
         hasImage: mediaGalleryEntries.length > 0,
         attributeCount: customAttributes.length
     });
+    await logger.flush();
 
     return product;
 }
 async function createMagentoProduct(product: MagentoProduct, env: Env, logger: Logger): Promise<void> {
     const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
-    logger.log('Creating Magento product', {
+    logger.info('Creating Magento product', {
         sku: product.sku,
         attributes: product.custom_attributes
     });
@@ -386,24 +350,26 @@ async function createMagentoProduct(product: MagentoProduct, env: Env, logger: L
 
     if (!response.ok) {
         const error = await response.json() as MagentoError;
-        logger.log('Magento product creation failed', {
+        logger.error('Magento product creation failed', {
             sku: product.sku,
             error: error.message,
             duration: `${Date.now() - startTime}ms`
         });
+        await logger.flush();
         throw new Error(`Failed to create Magento product: ${error.message}`);
     }
 
-    logger.log('Magento product created', {
+    logger.info('Magento product created', {
         sku: product.sku,
         duration: `${Date.now() - startTime}ms`
     });
+    await logger.flush();
 }
 
 async function updateMagentoProduct(product: MagentoProduct, env: Env, logger: Logger): Promise<void> {
     const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
     const encodedSku = encodeURIComponent(product.sku);
-    logger.log('Updating Magento product', {
+    logger.info('Updating Magento product', {
         sku: product.sku,
         attributes: product.custom_attributes
     });
@@ -423,32 +389,34 @@ async function updateMagentoProduct(product: MagentoProduct, env: Env, logger: L
 
     if (!response.ok) {
         const error = await response.json() as MagentoError;
-        logger.log('Magento product update failed', {
+        logger.error('Magento product update failed', {
             sku: product.sku,
             error: error.message,
             duration: `${Date.now() - startTime}ms`
         });
+        await logger.flush();
         throw new Error(`Failed to update Magento product: ${error.message}`);
     }
 
-    logger.log('Magento product updated', {
+    logger.info('Magento product updated', {
         sku: product.sku,
         duration: `${Date.now() - startTime}ms`
     });
+    await logger.flush();
 }
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<EnvBind> = async (context) => {
     const request = context.request;
     const env = context.env;
-    const logger = new Logger();
-    logger.log('Worker started', { method: request.method });
+    const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
+    logger.info('Worker started', { method: request.method });
 
     try {
 
         const importRequest = await request.json() as ImportRequest;
         const { shopifyProduct, variant, attributeMappings, configurableSku } = importRequest;
 
-        logger.log('Processing import request', {
+        logger.info('Processing import request', {
             productId: shopifyProduct.id,
             title: shopifyProduct.title,
             sku: variant.sku,
@@ -466,13 +434,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         try {
             if (variantExists) {
                 await updateMagentoProduct(magentoProduct, env, logger);
-                logger.log('Product updated successfully', {
+                logger.info('Product updated successfully', {
                     sku: magentoProduct.sku,
                     hasImage: magentoProduct.media_gallery_entries?.length > 0
                 });
             } else {
                 await createMagentoProduct(magentoProduct, env, logger);
-                logger.log('Product created successfully', {
+                logger.info('Product created successfully', {
                     sku: magentoProduct.sku,
                     hasImage: magentoProduct.media_gallery_entries?.length > 0
                 });
@@ -488,22 +456,22 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
                     logger
                 );
             }
+            await logger.flush();
 
             return new Response(JSON.stringify({
                 success: true,
                 message: variantExists ? 'Product updated successfully' : 'Product created successfully',
                 sku: magentoProduct.sku,
-                logs: logger.getLogs()
             }), {
                 headers: { 'Content-Type': 'application/json' },
             });
         } catch (err) {
             const error = err as Error;
-            logger.log('Import failed', { error: error.message });
+            logger.error('Import failed', { error: error.message });
+            await logger.flush();
 
             return new Response(JSON.stringify({
                 error: error.message,
-                logs: logger.getLogs()
             }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' },
@@ -511,12 +479,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         }
     } catch (err) {
         const error = err as Error;
-        logger.log('Invalid request', { error: error.message });
+        logger.error('Invalid request', { error: error.message });
+        await logger.flush();
 
         return new Response(JSON.stringify({
             error: 'Invalid request format',
-            details: error.message,
-            logs: logger.getLogs()
+            details: error.message
         }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },

@@ -29,7 +29,7 @@ async function getExistingVariants(configurableSku: string): Promise<string[]> {
         if (!response.ok) {
             throw new Error('Failed to fetch existing variants');
         }
-        const data = await response.json();
+        const data: any = await response.json();
         return data.childSkus;
     } catch (error) {
         console.error('Error fetching existing variants:', error);

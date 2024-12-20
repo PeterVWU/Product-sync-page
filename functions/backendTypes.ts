@@ -1,3 +1,5 @@
+// backendTypes.ts
+
 export interface Env {
     SHOPIFY_STORE_URL: string;
     SHOPIFY_ACCESS_TOKEN: string;
@@ -142,13 +144,6 @@ export interface ShopifyGraphQLResponse {
             }>;
         };
     };
-}
-
-export interface LogEntry {
-    timestamp: string;
-    event: string;
-    details?: any;
-    duration?: number;
 }
 
 export interface MagentoCategory {

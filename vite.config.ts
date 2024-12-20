@@ -23,7 +23,8 @@ export default defineConfig({
       '/create-configurable-product': 'http://localhost:8788',
       '/get-configurable-variants': 'http://localhost:8788',
       '/create-attribute-value': 'http://localhost:8788',
-      '/import-to-magento': 'http://localhost:8788'
+      '/import-to-magento': 'http://localhost:8788',
+      '/get-logs': 'http://localhost:8788'
     }
   }
 })

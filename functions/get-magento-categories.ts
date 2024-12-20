@@ -1,27 +1,8 @@
-import { Env, LogEntry, MagentoCategoryResponse, MagentoCategory } from "./backendTypes";
+import { Env, MagentoCategoryResponse, MagentoCategory } from "./backendTypes";
+import Logger from './logger';
 
-class Logger {
-    private logs: LogEntry[] = [];
-    private startTime: number;
-
-    constructor() {
-        this.startTime = Date.now();
-    }
-
-    log(event: string, details?: any) {
-        const entry: LogEntry = {
-            timestamp: new Date().toISOString(),
-            event,
-            details,
-            duration: Date.now() - this.startTime
-        };
-        this.logs.push(entry);
-        console.log(JSON.stringify(entry));
-    }
-
-    getLogs() {
-        return this.logs;
-    }
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
 }
 
 function normalizeUrl(url: string): string {
@@ -105,10 +86,11 @@ async function getAllCategories(env: Env): Promise<MagentoCategory[]> {
     return data.items;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
     const env = context.env;
-    const logger = new Logger();
-    logger.log('Worker started', { method: context.request.method });
+    const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
+    logger.info('Starting get magento categories request', { method: context.request.method });
+    await logger.flush();
 
     try {
         const categories = await getAllCategories(env);
@@ -132,7 +114,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching categories:', error);
+        logger.error('Failed to fetch attributes', { error: error.message });
+        await logger.flush();
         return new Response(JSON.stringify({
             error: `Failed to fetch Magento categories: ${error.message}`
         }), {
