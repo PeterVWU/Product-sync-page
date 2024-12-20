@@ -1,3 +1,5 @@
+// backendTypes.ts
+
 export interface Env {
     SHOPIFY_STORE_URL: string;
     SHOPIFY_ACCESS_TOKEN: string;
@@ -5,7 +7,6 @@ export interface Env {
     MAGENTO_ACCESS_TOKEN: string;
     ADDITIONAL_SHOPIFY_STORES: string;
     ADDITIONAL_SHOPIFY_TOKENS: string;
-    PRODUCT_SYNC_LOGS: KVNamespace;
 }
 
 export interface ShopifyVariant {

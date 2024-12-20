@@ -1,6 +1,10 @@
 import { Env, MagentoAttributeMetadata } from "./backendTypes";
 import Logger from './logger';
 
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
 function normalizeUrl(url: string): string {
     url = url.replace(/\/+$/, '');
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -47,7 +51,7 @@ async function fetchMagentoAttributeMetadata(env: Env, logger: Logger): Promise<
     return attributes;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
     const env = context.env;
     const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
     logger.info('Starting get magento attribute request', { method: context.request.method });

@@ -1,6 +1,10 @@
 import { Env, MagentoCategoryResponse, MagentoCategory } from "./backendTypes";
 import Logger from './logger';
 
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
 function normalizeUrl(url: string): string {
     url = url.replace(/\/+$/, '');
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -82,7 +86,7 @@ async function getAllCategories(env: Env): Promise<MagentoCategory[]> {
     return data.items;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
     const env = context.env;
     const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
     logger.info('Starting get magento categories request', { method: context.request.method });

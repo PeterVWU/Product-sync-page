@@ -7,7 +7,11 @@ interface StoreResponse {
     storeUrl: string;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
     const env = context.env;
     const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
     try {

@@ -1,6 +1,10 @@
 import { Env, ShopifyGraphQLResponse, ShopifyProduct } from "./backendTypes";
 import Logger from './logger';
 
+interface EnvBind extends Env {
+  PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
 const SHOPIFY_PRODUCT_QUERY = `
   query GetProduct($query: String!) {
     products(first: 1, query: $query) {
@@ -145,7 +149,7 @@ async function searchShopifyProduct(searchTerm: string, env: Env, logger: Logger
   };
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
   const env = context.env;
   const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
   logger.info('Starting get shopify products', { method: context.request.method });

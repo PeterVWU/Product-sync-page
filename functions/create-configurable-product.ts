@@ -25,6 +25,10 @@ interface CreateConfigurableRequest {
     productAttributes: ProductAttributes;
 }
 
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
 async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
     const bytes = new Uint8Array(buffer);
     let binary = '';
@@ -318,7 +322,7 @@ function transformDescription(shopifyHtml: string): string {
     return styleBlock + wrappedContent;
 }
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<EnvBind> = async (context) => {
     const request = context.request;
     const env = context.env;
     const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });

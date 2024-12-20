@@ -14,6 +14,9 @@ interface ImportResult {
     productId?: string;
 }
 
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
 
 const SHOPIFY_IMPORT_MUTATION = `
   mutation createProduct($input: ProductInput!) {
@@ -115,7 +118,7 @@ async function importToStore(
     }
 }
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<EnvBind> = async (context) => {
     const request = context.request;
     const env = context.env;
     const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });

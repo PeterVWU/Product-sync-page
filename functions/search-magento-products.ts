@@ -1,6 +1,10 @@
 import { Env } from "./backendTypes";
 import Logger from './logger';
 
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
 function normalizeUrl(url: string): string {
     url = url.replace(/\/+$/, '');
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -9,7 +13,7 @@ function normalizeUrl(url: string): string {
     return url;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
     const { searchParams } = new URL(context.request.url);
     const searchBase = searchParams.get('searchBase');
     const env = context.env;

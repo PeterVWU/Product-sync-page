@@ -15,6 +15,10 @@ interface ImportRequest {
     isNewConfigurable: boolean;
 }
 
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
 async function linkVariantToConfigurable(
     configurableSku: string,
     variantSku: string,
@@ -401,7 +405,7 @@ async function updateMagentoProduct(product: MagentoProduct, env: Env, logger: L
     await logger.flush();
 }
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<EnvBind> = async (context) => {
     const request = context.request;
     const env = context.env;
     const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });

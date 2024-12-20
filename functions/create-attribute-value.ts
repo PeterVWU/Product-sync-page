@@ -13,8 +13,11 @@ interface CreateAttributeValueRequest {
     attributeCode: string;
     value: string;
 }
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<EnvBind> = async (context) => {
     const request = context.request;
     const env = context.env;
     const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
