@@ -120,11 +120,16 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 onOptionsChange(updatedOptions);
             }
 
+            const newValue = data.option.value;
+
+            setTimeout(() => {
+                setIsOpen(false);
+                setSearchTerm("");
+                setIsCreating(false);
+            }, 100);
+
             // Call onChange with the new value
-            onChange(data.option.value, searchTerm.trim());
-            setIsOpen(false);
-            setSearchTerm("");
-            setIsCreating(false);
+            onChange(newValue, searchTerm.trim());
 
         } catch (error) {
             setCreateError((error as Error).message);

@@ -76,7 +76,6 @@ function formatCost(cost: string): number {
 async function searchShopifyProduct(searchTerm: string, env: Env, logger: Logger): Promise<ShopifyProduct | null> {
   const baseUrl = normalizeUrl(env.SHOPIFY_STORE_URL);
   logger.info('Searching Shopify product', { searchTerm });
-  await logger.flush();
 
   const startTime = Date.now();
   const response = await fetch(
