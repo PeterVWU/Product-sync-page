@@ -355,8 +355,22 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
     };
 
     const handleValueChange = (shopifyAttr: string, value: string | string[]) => {
+
+        // Get the selected attribute
+        const attributeCode = mappings[shopifyAttr].mappedTo;
+        const attribute = attributes.find(attr => attr.attribute_code === attributeCode);
+
+        // Find the label for the selected value from Magento options
+        let label = Array.isArray(value) ? value.join(', ') : value;  // Default to the value itself
+        if (attribute?.options) {
+            const option = attribute.options.find(opt => opt.value === value);
+            if (option) {
+                label = option.label;
+            }
+        }
         const newMapping = {
             ...mappings[shopifyAttr],
+            value: label,
             mappedValue: value
         };
 

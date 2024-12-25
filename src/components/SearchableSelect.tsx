@@ -33,19 +33,32 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     attributeCode,
     allowCreate = false
 }) => {
+
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [displayedOptions, setDisplayedOptions] = useState<Option[]>([]);
     const [isCreating, setIsCreating] = useState(false);
     const [createError, setCreateError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [localValue, setLocalValue] = useState(value);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    // Track the last created value to prevent sync
+    const justCreatedValue = useRef<{ value: string, timestamp: number } | null>(null);
 
     // Sort options alphabetically - memoized to prevent unnecessary sorting
     const sortedOptions = useMemo(() => {
         return [...options].sort((a, b) => a.label?.localeCompare(b.label));
     }, [options]);
+
+    // Update local value when prop changes
+    useEffect(() => {
+        if (!justCreatedValue.current ||
+            (Date.now() - justCreatedValue.current.timestamp > 1000 &&
+                value !== justCreatedValue.current.value)) {
+            setLocalValue(value);
+        }
+    }, [value]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -83,7 +96,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }, [searchTerm, sortedOptions]);
 
     // Get selected option label
-    const selectedLabel = sortedOptions.find(opt => opt.value === value)?.label || '';
+    const selectedLabel = sortedOptions.find(opt => opt.value === localValue)?.label || '';
 
     const handleCreateValue = async () => {
         if (!attributeCode || !searchTerm.trim()) return;
@@ -114,22 +127,27 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 value: data.option.value
             };
 
+            // Set the just created value with timestamp
+            justCreatedValue.current = {
+                value: newOption.value,
+                timestamp: Date.now()
+            };
+
+            // Update local value first
+            setLocalValue(newOption.value);
+
             // Update the local options list
             const updatedOptions = [...options, newOption];
             if (onOptionsChange) {
                 onOptionsChange(updatedOptions);
             }
 
-            const newValue = data.option.value;
-
-            setTimeout(() => {
-                setIsOpen(false);
-                setSearchTerm("");
-                setIsCreating(false);
-            }, 100);
-
             // Call onChange with the new value
-            onChange(newValue, searchTerm.trim());
+            onChange(newOption.value, newOption.label);
+
+            setIsOpen(false);
+            setSearchTerm("");
+            setIsCreating(false);
 
         } catch (error) {
             setCreateError((error as Error).message);
@@ -138,10 +156,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         }
     };
 
+    const handleOptionSelect = (selectedOption: Option) => {
+        setLocalValue(selectedOption.value);
+        onChange(selectedOption.value, selectedOption.label);
+        setIsOpen(false);
+        setSearchTerm("");
+    };
+
     // Virtualized row renderer
     const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
         const option = displayedOptions[index];
-        const isSelected = option.value === value;
+        const isSelected = option.value === localValue;
 
         return (
             <div
@@ -150,11 +175,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     px-3 py-1 text-sm cursor-pointer hover:bg-gray-100
                     ${isSelected ? 'bg-blue-50 text-blue-600' : ''}
                 `}
-                onClick={() => {
-                    onChange(option.value, option.label);
-                    setIsOpen(false);
-                    setSearchTerm("");
-                }}
+                onClick={() => handleOptionSelect(option)}
             >
                 {option.label}
             </div>
@@ -174,7 +195,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="truncate text-sm">
-                    {value ? selectedLabel : <span className="text-gray-500">{placeholder}</span>}
+                    {localValue ? selectedLabel : <span className="text-gray-500">{placeholder}</span>}
                 </div>
                 <span className={`text-gray-500 text-sm ml-2 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
                     ▼
