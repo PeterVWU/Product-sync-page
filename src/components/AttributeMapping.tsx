@@ -505,7 +505,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
                                                         value: opt.value
                                                     }))}
                                                     value={mapping.mappedValue as string}
-                                                    onChange={(value: string, label: string, newOptions?: Option[]) => handleValueChange(shopifyAttr, value, newOptions)} placeholder="Select Value"
+                                                    onChange={(value: string, _: string, newOptions?: Option[]) => handleValueChange(shopifyAttr, value, newOptions)} placeholder="Select Value"
                                                     attributeCode={mapping.mappedTo}
                                                     allowCreate={true}
                                                 />
