@@ -82,6 +82,8 @@ function App() {
         !existingVariantSkus.includes(mapping.variant.sku)
       );
 
+      console.log('Filtered mappings for import:', filteredMappings);
+
       if (filteredMappings.length === 0) {
         throw new Error('No new variants to import');
       }
@@ -127,7 +129,7 @@ function App() {
         if (attributesPayload.length === 0) {
           throw new Error('No configurable attributes found');
         }
-        console.log('filteredMappings', filteredMappings)
+
         const response = await fetch('/create-configurable-product', {
           method: 'POST',
           headers: {

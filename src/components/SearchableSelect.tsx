@@ -10,8 +10,7 @@ interface Option {
 interface SearchableSelectProps {
     options: Option[];
     value: string;
-    onChange: (value: string, label: string) => void;
-    onOptionsChange?: (newOptions: Option[]) => void;
+    onChange: (value: string, label: string, newOptions?: Option[]) => void;
     placeholder?: string;
     className?: string;
     attributeCode?: string;
@@ -27,7 +26,6 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     options,
     value,
     onChange,
-    onOptionsChange,
     placeholder = "Select a value",
     className = "",
     attributeCode,
@@ -116,12 +114,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
             // Update the local options list
             const updatedOptions = [...options, newOption];
-            if (onOptionsChange) {
-                onOptionsChange(updatedOptions);
-            }
 
             // Call onChange with the new value
-            onChange(data.option.value, searchTerm.trim());
+            onChange(newOption.value, newOption.label, updatedOptions);
+
             setIsOpen(false);
             setSearchTerm("");
             setIsCreating(false);
@@ -131,6 +127,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleOptionSelect = (selectedOption: Option) => {
+        // setLocalValue(selectedOption.value);
+        onChange(selectedOption.value, selectedOption.label);
+        setIsOpen(false);
+        setSearchTerm("");
     };
 
     // Virtualized row renderer
@@ -145,11 +148,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     px-3 py-1 text-sm cursor-pointer hover:bg-gray-100
                     ${isSelected ? 'bg-blue-50 text-blue-600' : ''}
                 `}
-                onClick={() => {
-                    onChange(option.value, option.label);
-                    setIsOpen(false);
-                    setSearchTerm("");
-                }}
+                onClick={() => handleOptionSelect(option)}
             >
                 {option.label}
             </div>

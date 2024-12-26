@@ -385,6 +385,10 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
 
     // Update variant mapping but exclude product-level attributes
     const handleVariantMapping = (index: number, mappings: AttributeMappingType) => {
+
+        // Find the actual index in the full variantMappings array
+        const variantSku = filteredVariantMappings[index].variant.sku;
+        const fullArrayIndex = variantMappings.findIndex(m => m.variant.sku === variantSku);
         // Keep variant-specific mappings but ensure latest product attributes are included
         const combinedMappings = {
             ...mappings, // Variant-specific mappings
@@ -393,7 +397,7 @@ const MultiVariantMapping: React.FC<MultiVariantMappingProps> = ({
             description: productAttributes.description,
             category_ids: productAttributes.category_ids
         };
-        onUpdateMapping(index, combinedMappings);
+        onUpdateMapping(fullArrayIndex, combinedMappings);
     };
 
 

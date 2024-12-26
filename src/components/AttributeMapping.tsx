@@ -17,6 +17,10 @@ interface AttributeMappingProps {
     hideButtons?: boolean;
     excludeAttributes?: string[];
 }
+interface Option {
+    label: string;
+    value: string;
+}
 
 interface ValidationResult {
     isValid: boolean;
@@ -215,6 +219,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
     excludeAttributes = []
 }) => {
     const [mappings, setMappings] = useState<AttributeMappingType>({});
+    const [orignalMappings, setOrignalMappings] = useState<AttributeMappingType>({});
     const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
 
 
@@ -303,6 +308,8 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
         });
 
         setMappings(initialMappings);
+        // keep a copy of the original mappings to compare with later
+        setOrignalMappings(initialMappings);
 
         // Initialize touched state for all attributes
         const initialTouched: { [key: string]: boolean } = {};
@@ -315,7 +322,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
         if (hideButtons) {
             onSave(initialMappings);
         }
-    }, [product, variant, attributes]);
+    }, [product, variant]);
 
     const handleAttributeChange = (shopifyAttr: string, magentoAttr: string,) => {
         const attribute = attributes.find(attr => attr.attribute_code === magentoAttr);
@@ -354,9 +361,29 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
 
     };
 
-    const handleValueChange = (shopifyAttr: string, value: string | string[]) => {
+    const handleValueChange = (shopifyAttr: string, value: string | string[], newOptions?: Option[]) => {
+        // Get the selected attribute
+        const attributeCode = mappings[shopifyAttr].mappedTo;
+        let attribute: MagentoAttributeMetadata | undefined
+
+        if (newOptions) {
+            const updatedAttribute = handleOptionsUpdate(attributeCode, newOptions)
+            attribute = updatedAttribute.find(attr => attr.attribute_code === attributeCode);
+        } else {
+            attribute = attributes.find(attr => attr.attribute_code === attributeCode);
+        }
+
+        // Find the label for the selected value from Magento options
+        let label = Array.isArray(value) ? value.join(', ') : value;  // Default to the value itself
+        if (attribute?.options) {
+            const option = attribute.options.find(opt => opt.value === value);
+            if (option) {
+                label = option.label;
+            }
+        }
         const newMapping = {
             ...mappings[shopifyAttr],
+            value: label,
             mappedValue: value
         };
 
@@ -384,7 +411,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
         return attribute?.options || [];
     };
 
-    const handleOptionsUpdate = (attributeCode: string, newOptions: Array<{ label: string; value: string }>) => {
+    const handleOptionsUpdate = (attributeCode: string, newOptions: Array<{ label: string; value: string }>): MagentoAttributeMetadata[] => {
         // Find and update the attribute in the attributes array
         const updatedAttributes = attributes.map(attr => {
             if (attr.attribute_code === attributeCode) {
@@ -402,6 +429,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
         // Update the attributes state in the parent component
         // You'll need to add this prop to the AttributeMapping component
         onAttributesUpdate(updatedAttributes);
+        return updatedAttributes;
     };
 
     return (
@@ -433,7 +461,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
                         selectedMagentoAttr?.frontend_input === 'multiselect';
 
                     const validation = validateAttributeMapping(
-                        mapping.value,
+                        orignalMappings[shopifyAttr]?.value || mapping.value,
                         mapping.mappedValue,
                         isSelect ? getAttributeOptions(mapping.mappedTo) : undefined
                     );
@@ -449,7 +477,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
                                         {shopifyAttr}:
                                     </span>
                                     <span className="text-sm text-gray-600">
-                                        {mapping.value}
+                                        {orignalMappings[shopifyAttr]?.value || mapping.value}
                                     </span>
                                     {validationState === 'warning' && (
                                         <span className="ml-2 text-xs text-yellow-600">
@@ -477,9 +505,7 @@ const AttributeMapping: React.FC<AttributeMappingProps> = ({
                                                         value: opt.value
                                                     }))}
                                                     value={mapping.mappedValue as string}
-                                                    onChange={(value: string) => handleValueChange(shopifyAttr, value)}
-                                                    onOptionsChange={(newOptions) => handleOptionsUpdate(mapping.mappedTo, newOptions)}
-                                                    placeholder="Select Value"
+                                                    onChange={(value: string, _: string, newOptions?: Option[]) => handleValueChange(shopifyAttr, value, newOptions)} placeholder="Select Value"
                                                     attributeCode={mapping.mappedTo}
                                                     allowCreate={true}
                                                 />
