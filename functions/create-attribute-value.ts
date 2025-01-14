@@ -1,28 +1,5 @@
-import { Env, LogEntry } from "./backendTypes";
-
-class Logger {
-    private logs: LogEntry[] = [];
-    private startTime: number;
-
-    constructor() {
-        this.startTime = Date.now();
-    }
-
-    log(event: string, details?: any) {
-        const entry: LogEntry = {
-            timestamp: new Date().toISOString(),
-            event,
-            details,
-            duration: Date.now() - this.startTime
-        };
-        this.logs.push(entry);
-        console.log(JSON.stringify(entry));
-    }
-
-    getLogs() {
-        return this.logs;
-    }
-}
+import { Env } from "./backendTypes";
+import Logger from './logger';
 
 function normalizeUrl(url: string): string {
     url = url.replace(/\/+$/, '');
@@ -36,12 +13,15 @@ interface CreateAttributeValueRequest {
     attributeCode: string;
     value: string;
 }
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<EnvBind> = async (context) => {
     const request = context.request;
     const env = context.env;
-    const logger = new Logger();
-    logger.log('Worker started', { method: request.method });
+    const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
+    logger.info('Starting create attribute request', { method: request.method });
 
     try {
         const { attributeCode, value } = await request.json() as CreateAttributeValueRequest;
@@ -103,11 +83,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
         const result = await response.json();
 
-        logger.log('Created attribute value', {
+        logger.info('Created attribute value', {
             attributeCode,
             value,
             result
         });
+        await logger.flush();
 
         // After creating, fetch the updated attribute to get the new option's ID
         const updatedAttributeResponse = await fetch(
@@ -124,19 +105,18 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
         return new Response(JSON.stringify({
             success: true,
-            option: newOption,
-            logs: logger.getLogs()
+            option: newOption
         }), {
             headers: { 'Content-Type': 'application/json' },
         });
 
     } catch (err) {
         const error = err as Error;
-        logger.log('Failed to create attribute value', { error: error.message });
+        logger.error('Failed to create attribute value', { error: error.message });
+        await logger.flush();
 
         return new Response(JSON.stringify({
             error: error.message,
-            logs: logger.getLogs()
         }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },

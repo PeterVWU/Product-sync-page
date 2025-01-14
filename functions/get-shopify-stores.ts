@@ -1,4 +1,5 @@
 import { Env, ShopifyStoreConfig } from "./backendTypes";
+import Logger from './logger';
 
 interface StoreResponse {
     id: string;
@@ -6,9 +7,16 @@ interface StoreResponse {
     storeUrl: string;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
+
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
+    const env = context.env;
+    const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
     try {
-        const env = context.env;
+        logger.info('Starting get shopify stores', { method: context.request.method });
+        await logger.flush();
 
         // Parse store configurations from environment variables
         let stores: ShopifyStoreConfig[] = [];
@@ -34,6 +42,11 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         });
 
     } catch (error) {
+        logger.error('Get shopify stores failed', {
+            error: (error as Error).message
+        });
+
+        await logger.flush();
         return new Response(JSON.stringify({
             error: 'Failed to fetch store configurations'
         }), {

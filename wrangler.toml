@@ -16,3 +16,7 @@ MAGENTO_BASE_URL = "vapewholesaleusa.com"
 
 [observability]
 enabled = true
+
+[[kv_namespaces]]
+binding = "PRODUCT_SYNC_LOGS"
+id = "09e17dfecdda479f88a2998305e5577d"

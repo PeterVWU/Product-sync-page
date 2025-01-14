@@ -1,4 +1,9 @@
-import { Env, LogEntry } from "./backendTypes";
+import { Env } from "./backendTypes";
+import Logger from './logger';
+
+interface EnvBind extends Env {
+    PRODUCT_SYNC_LOGS: KVNamespace;
+}
 
 function normalizeUrl(url: string): string {
     url = url.replace(/\/+$/, '');
@@ -8,10 +13,12 @@ function normalizeUrl(url: string): string {
     return url;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<EnvBind> = async (context) => {
     const { searchParams } = new URL(context.request.url);
     const sku = searchParams.get('sku');
+    const request = context.request;
     const env = context.env;
+    const logger = new Logger({ kv: env.PRODUCT_SYNC_LOGS });
 
     if (!sku) {
         return new Response(JSON.stringify({ error: 'SKU parameter is required' }), {
@@ -21,6 +28,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     }
 
     try {
+        logger.info('Starting get configurable variants request', { method: request.method });
+        await logger.flush();
         const baseUrl = normalizeUrl(env.MAGENTO_BASE_URL);
 
         // Get children products
@@ -36,6 +45,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         if (!response.ok) {
             // If the product is not found or has no children, return empty array
             if (response.status === 404) {
+                logger.info('No childten found');
+                await logger.flush();
                 return new Response(JSON.stringify({ childSkus: [] }), {
                     headers: { 'Content-Type': 'application/json' },
                 });
@@ -50,6 +61,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        logger.error('Failed to to fetch variantse', { error: error.message });
+        await logger.flush();
         return new Response(JSON.stringify({
             error: (error as Error).message,
             childSkus: [] // Return empty array on error
